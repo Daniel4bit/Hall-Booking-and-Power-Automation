@@ -1,17 +1,26 @@
+
 #include <Arduino.h>
 
 #include <Ethernet.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 
+#include <Arduino.h>
+#include <HTTPUpdate.h>
+#include <HTTPClient.h>
+
+void update();
+
 EthernetClient ethClient;
 PubSubClient MqttClient(ethClient);
 JsonDocument json;
+HttpClient http(ethClient);
 
 const int warnDuration = 10;  //seconds before power off
 float durationRemaining = 0;
 unsigned long durationSetTime = 0;
 int lastStatus = 0;
+uint32_t updateCounter = 0;
 
 const int outputPin = 26;
 const int buzzerPin = 13;
@@ -34,7 +43,7 @@ String pubTopic = "qrpower/" + String(deviceId) + "/" + String(roomId);
 
 
 
-
+void update();
 void parseDataFromMessage(String message) {
   DeserializationError error = deserializeJson(json, message);
 
@@ -70,6 +79,17 @@ void MqttCallback(char* topicIn, byte* messageIn, unsigned int length) {
   parseDataFromMessage(message);
 }
 
+
+
+void update()
+{
+  String url = "http://otadrive.com/deviceapi/update?";
+  url += "k=97eba931-8be9-4cf4-a0c4-52b9274cf793";
+  url += "&v=1.0.0.1";
+  url += "&s=e84bcb94ec";
+
+  httpUpdate.update(http, url);
+}
 void setup() {
   Serial.begin(9600);
   pinMode(outputPin, OUTPUT);
@@ -83,7 +103,7 @@ void setup() {
 
   Ethernet.init(5);
   Ethernet.begin(mac, ip, mydns, gateway, subnet);
-
+  
   Serial.print("IP:");
   Serial.println(Ethernet.localIP());
   digitalWrite(wifiLEDPin, HIGH);
@@ -114,6 +134,7 @@ void reconnectMqtt() {
 }
 
 void loop() {
+
   if (!MqttClient.connected()) {
     reconnectMqtt();
   }
@@ -149,4 +170,13 @@ void loop() {
     MqttClient.publish(pubTopic.c_str(), publishDoc.as<String>().c_str());
     lastStatus = 0;
   }  
+
+updateCounter++;
+    if(updateCounter>20)
+
+{     
+      Serial.println("Checking for updates");
+      updateCounter = 0;
+      update();
+} 
 }
