@@ -4,17 +4,14 @@
 #include <Ethernet.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
-
-#include <Arduino.h>
-#include <HTTPUpdate.h>
-#include <HTTPClient.h>
+#include <HttpUpdate.h>
+#include <WiFi.h>
 
 void update();
 
 EthernetClient ethClient;
 PubSubClient MqttClient(ethClient);
 JsonDocument json;
-HttpClient http(ethClient);
 
 const int warnDuration = 10;  //seconds before power off
 float durationRemaining = 0;
@@ -28,10 +25,10 @@ const int warningLEDPin = 15;
 const int wifiLEDPin = 32;
 
 byte mac[] = { 0x74, 0x69, 0x69, 0x2D, 0x30, 0x31 };
-IPAddress ip(10, 70, 11, 187);
+IPAddress ip(10, 10, 180, 11);
 IPAddress mydns(172, 16, 16, 16);
-IPAddress gateway(10, 70, 11, 1);
-IPAddress subnet(255, 255, 255, 0);
+IPAddress gateway(10, 10, 160, 1);
+IPAddress subnet(255, 255, 224, 0);
 
 String deviceId = "D0001";
 String roomId = "R0001";
@@ -41,9 +38,14 @@ String clientId = "clsrm-node-" + String(deviceId);
 String subTopic = "qrpower/" + String(roomId) + "/" + String(deviceId);
 String pubTopic = "qrpower/" + String(deviceId) + "/" + String(roomId);
 
+WiFiClient wifiClient;
+void update()
+{
+  String url = "http://cibikomberi.local:8080/thing/update/677367065ee782724fdba1a4?version=1";
 
+  httpUpdate.update(wifiClient, url);
+}
 
-void update();
 void parseDataFromMessage(String message) {
   DeserializationError error = deserializeJson(json, message);
 
@@ -81,15 +83,7 @@ void MqttCallback(char* topicIn, byte* messageIn, unsigned int length) {
 
 
 
-void update()
-{
-  String url = "http://otadrive.com/deviceapi/update?";
-  url += "k=97eba931-8be9-4cf4-a0c4-52b9274cf793";
-  url += "&v=1.0.0.1";
-  url += "&s=e84bcb94ec";
 
-  httpUpdate.update(http, url);
-}
 void setup() {
   Serial.begin(9600);
   pinMode(outputPin, OUTPUT);
@@ -107,10 +101,12 @@ void setup() {
   Serial.print("IP:");
   Serial.println(Ethernet.localIP());
   digitalWrite(wifiLEDPin, HIGH);
-
+ 
   MqttClient.setServer(mqtt_server, 1883);
   MqttClient.setCallback(MqttCallback);
   MqttClient.subscribe(subTopic.c_str());
+
+  WiFi.begin("BIT-ENERGY", "pic-embedded");
 }
 
 // Ensure connection with broker
@@ -139,7 +135,10 @@ void loop() {
     reconnectMqtt();
   }
   MqttClient.loop();
-
+  if (WiFi.status() == WL_CONNECTED) {
+    update();
+  }
+  
   float elapsedTimeSinceLastMessage = (millis() - durationSetTime) / 1000;
   if (elapsedTimeSinceLastMessage < durationRemaining) {
     lastStatus = 1;
@@ -171,12 +170,5 @@ void loop() {
     lastStatus = 0;
   }  
 
-updateCounter++;
-    if(updateCounter>20)
 
-{     
-      Serial.println("Checking for updates");
-      updateCounter = 0;
-      update();
-} 
 }
