@@ -39,6 +39,10 @@ void parseDataFromMessage(String message) {
   DeserializationError error = deserializeJson(json, message);
 
   if (!error) {
+    if (json["device_id"].as<String>() != deviceId) {
+      return;
+    }
+    
     durationRemaining = json["minutes"].as<float>() * 60;
     durationSetTime = millis();
 
