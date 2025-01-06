@@ -1,8 +1,7 @@
-
 #include <Arduino.h>
 
 #include <Ethernet.h>
-#include <PubSubClient.h>
+#include <MQTT.h>
 #include <ArduinoJson.h>
 #include <HttpUpdate.h>
 #include <WiFi.h>
@@ -10,7 +9,7 @@
 void update();
 
 EthernetClient ethClient;
-PubSubClient MqttClient(ethClient);
+MQTTClient mqtt;
 JsonDocument json;
 
 const int warnDuration = 10;  //seconds before power off
@@ -24,16 +23,16 @@ const int buzzerPin = 13;
 const int warningLEDPin = 15;
 const int wifiLEDPin = 32;
 
-byte mac[] = { 0x74, 0x69, 0x69, 0x2D, 0x30, 0x31 };
-IPAddress ip(10, 10, 180, 11);
+byte mac[] = { 0x74, 0x69, 0x69, 0x2D, 0x30, 0x32 };
+IPAddress ip(10, 70, 11, 187);
 IPAddress mydns(172, 16, 16, 16);
-IPAddress gateway(10, 10, 160, 1);
-IPAddress subnet(255, 255, 224, 0);
+IPAddress gateway(10, 70, 11, 1);
+IPAddress subnet(255, 255, 255, 0);
 
-String deviceId = "D0001";
-String roomId = "R0001";
+String deviceId = "D0005";
+String roomId = "R0005";
 
-const char* mqtt_server = "10.70.11.247";
+const char* mqtt_server = "10.70.251.64";
 String clientId = "clsrm-" + String(deviceId);
 String subTopic = "qrpower/" + String(roomId) + "/" + String(deviceId);
 String pubTopic = "qrpower/" + String(deviceId) + "/" + String(roomId);
@@ -61,26 +60,40 @@ void parseDataFromMessage(String message) {
       JsonDocument publishDoc;
       publishDoc["device_id"] = deviceId;
       publishDoc["status"] = 1;
-      MqttClient.publish(pubTopic.c_str(), publishDoc.as<String>().c_str());
+      mqtt.publish(pubTopic.c_str(), publishDoc.as<String>().c_str());
     } 
   }
 }
 
 //Method that is automatically called when there is a message
-void MqttCallback(char* topicIn, byte* messageIn, unsigned int length) {
+void MqttCallback(String &topic, String &payload) {
   Serial.print("Msg[");
-  Serial.print(topicIn);
+  Serial.print(topic);
   Serial.print("]");
-  String message;
+  Serial.println(payload);
 
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)messageIn[i]);
-    message += (char)messageIn[i];
-  }
-
-  parseDataFromMessage(message);
+  parseDataFromMessage(payload);
 }
 
+// Ensure connection with broker
+void connectMqtt() {
+  // No of tries to prevent infinite loop
+  int i = 5;
+  while (!mqtt.connected() && i > 0) {
+    Serial.print("MQTT..");
+    if (mqtt.connect(clientId.c_str())) {
+      Serial.println("MQTT ok");
+      mqtt.subscribe(subTopic);
+      mqtt.setKeepAlive(10);
+      mqtt.setWill("error", "device disconnected", true, 1);
+      Serial.println(subTopic.c_str());
+    } else {
+      Serial.print("fail");
+      // delay(500);
+    }
+    i--;
+  }
+}
 
 
 
@@ -101,40 +114,19 @@ void setup() {
   Serial.print("IP:");
   Serial.println(Ethernet.localIP());
   digitalWrite(wifiLEDPin, HIGH);
- 
-  MqttClient.setServer(mqtt_server, 1883);
-  MqttClient.setCallback(MqttCallback);
-  MqttClient.subscribe(subTopic.c_str());
 
+  mqtt.begin(mqtt_server, 1883, ethClient);
+  mqtt.onMessage(MqttCallback);
+  connectMqtt();
   WiFi.begin("BIT-ENERGY", "pic-embedded");
-}
-
-// Ensure connection with broker
-void reconnectMqtt() {
-  // No of tries to prevent infinite loop
-  int i = 5;
-  while (!MqttClient.connected() && i > 0) {
-    Serial.print("MQTT..");
-    if (MqttClient.connect(clientId.c_str())) {
-      Serial.println("MQTT ok");
-      MqttClient.subscribe(subTopic.c_str());
-      Serial.println(subTopic.c_str());
-    } else {
-      Serial.print("fail, st=");
-      Serial.print(MqttClient.state());
-      Serial.println("try again");
-      delay(500);
-    }
-    i--;
-  }
 }
 
 void loop() {
 
-  if (!MqttClient.connected()) {
-    reconnectMqtt();
+  if (!mqtt.connected()) {
+    connectMqtt();
   }
-  MqttClient.loop();
+  mqtt.loop();
   if (WiFi.status() == WL_CONNECTED) {
     update();
   }
@@ -166,9 +158,9 @@ void loop() {
     publishDoc["device_id"] = deviceId;
     publishDoc["status"] = 0;
 
-    MqttClient.publish(pubTopic.c_str(), publishDoc.as<String>().c_str());
+    mqtt.publish(pubTopic.c_str(), publishDoc.as<String>().c_str());
     lastStatus = 0;
-    ESP.restart();
+    // ESP.restart();
   }  
 
 
