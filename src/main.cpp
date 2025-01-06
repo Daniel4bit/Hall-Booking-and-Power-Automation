@@ -32,7 +32,7 @@ IPAddress subnet(255, 255, 255, 0);
 String deviceId = "D0005";
 String roomId = "R0005";
 
-const char* mqtt_server = "10.70.251.64";
+const char* mqtt_server = "10.70.11.247";
 String clientId = "clsrm-" + String(deviceId);
 String subTopic = "qrpower/" + String(roomId) + "/" + String(deviceId);
 String pubTopic = "qrpower/" + String(deviceId) + "/" + String(roomId);
@@ -81,11 +81,11 @@ void connectMqtt() {
   int i = 5;
   while (!mqtt.connected() && i > 0) {
     Serial.print("MQTT..");
+    // Will must be set before connecting 
+    mqtt.setWill("error", "device disconnected");
     if (mqtt.connect(clientId.c_str())) {
       Serial.println("MQTT ok");
       mqtt.subscribe(subTopic);
-      mqtt.setKeepAlive(10);
-      mqtt.setWill("error", "device disconnected", true, 1);
       Serial.println(subTopic.c_str());
     } else {
       Serial.print("fail");
