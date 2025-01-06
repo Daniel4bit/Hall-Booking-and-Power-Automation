@@ -34,7 +34,7 @@ String deviceId = "D0001";
 String roomId = "R0001";
 
 const char* mqtt_server = "10.70.11.247";
-String clientId = "clsrm-node-" + String(deviceId);
+String clientId = "clsrm-" + String(deviceId);
 String subTopic = "qrpower/" + String(roomId) + "/" + String(deviceId);
 String pubTopic = "qrpower/" + String(deviceId) + "/" + String(roomId);
 
@@ -50,9 +50,9 @@ void parseDataFromMessage(String message) {
   DeserializationError error = deserializeJson(json, message);
 
   if (!error) {
-    if (json["device_id"].as<String>() != deviceId) {
-      return;
-    }
+    // if (json["device_id"].as<String>() != deviceId) {
+    //   return;
+    // }
     
     durationRemaining = json["minutes"].as<float>() * 60;
     durationSetTime = millis();
@@ -168,6 +168,7 @@ void loop() {
 
     MqttClient.publish(pubTopic.c_str(), publishDoc.as<String>().c_str());
     lastStatus = 0;
+    ESP.restart();
   }  
 
 
