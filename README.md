@@ -1,4 +1,4 @@
-# Room-Booking-and-Power-Automation
+# Hall-Booking-and-Power-Automation
 The Room Booking and Power Automation System is an innovative solution designed to optimize energy usage and automate the power supply in rooms based on user needs. The system combines the concepts of room booking, power management, and IoT (Internet of Things) automation to provide a seamless user experience.
 
 Users can scan a QR code located in a room to book power for a specific duration. Once the booking is made, the system powers the room via a relay connected to an ESP32-based controller. It provides an efficient way to manage electricity consumption, improve energy efficiency, and reduce unnecessary power wastage by turning off the power after the set duration.
