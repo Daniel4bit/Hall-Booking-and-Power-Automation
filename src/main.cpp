@@ -34,8 +34,10 @@ String roomId = "R0005";
 
 const char* mqtt_server = "10.70.11.247";
 String clientId = "clsrm-" + String(deviceId);
+
 String subTopic = "qrpower/" + String(roomId) + "/" + String(deviceId);
 String pubTopic = "qrpower/" + String(deviceId) + "/" + String(roomId);
+String statusTopic = "qrpower/" + String(deviceId) + "/status";
 
 WiFiClient wifiClient;
 void update()
@@ -82,9 +84,10 @@ void connectMqtt() {
   while (!mqtt.connected() && i > 0) {
     Serial.print("MQTT..");
     // Will must be set before connecting 
-    mqtt.setWill("error", "device disconnected");
+    mqtt.setWill(statusTopic.c_str(), "device disconnected");
     if (mqtt.connect(clientId.c_str())) {
       Serial.println("MQTT ok");
+      mqtt.publish(statusTopic.c_str(), "device connected");
       mqtt.subscribe(subTopic);
       Serial.println(subTopic.c_str());
     } else {
