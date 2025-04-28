@@ -84,10 +84,10 @@ void connectMqtt() {
   while (!mqtt.connected() && i > 0) {
     Serial.print("MQTT..");
     // Will must be set before connecting 
-    mqtt.setWill(statusTopic.c_str(), "device disconnected");
+    mqtt.setWill(statusTopic.c_str(), "device disconnected", true, 1);
     if (mqtt.connect(clientId.c_str())) {
       Serial.println("MQTT ok");
-      mqtt.publish(statusTopic.c_str(), "device connected");
+      mqtt.publish(statusTopic.c_str(), "device connected", true, 1);
       mqtt.subscribe(subTopic);
       Serial.println(subTopic.c_str());
     } else {
